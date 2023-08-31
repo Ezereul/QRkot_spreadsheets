@@ -9,6 +9,10 @@ QRKot — это фонд, который собирает пожертвова�
 - FastAPI
 - SQLAlchemy
 - SQLite 
+- Alembic
+- Uvicorn
+- Pydantic
+- PyJWT
 
 ### Проекты
 - **Название**: Каждый проект имеет название.
@@ -47,6 +51,10 @@ source venv/Scripts/activate
 python -m pip install --upgrade pip
 pip install -r requiremtns.txt
 ```
+Применить миграции
+```bash
+alembic upgrade head
+```
 Запустить сервер
 ```bash
 uvicorn app.main:app
@@ -55,6 +63,10 @@ uvicorn app.main:app
 ### Справка 
 
 Спецификация проекта доступна по [ссылке](https://redocly.github.io/redoc/?url=https://code.s3.yandex.net/Python-dev/openapi.json)
+
+При запущенном проекте документация Swagger и ReDoc
+доступны на эндпоинтах:
+***/docs*** и ***/redoc***
 
 ### Автор
 Исаев Максим
