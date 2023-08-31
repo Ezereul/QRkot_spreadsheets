@@ -3,7 +3,7 @@ from datetime import datetime
 
 from aiogoogle import Aiogoogle
 from app.core.config import settings
-
+from app.services.exceptions import SpreadsheetSizeExceededError
 
 FORMAT = "%Y/%m/%d %H:%M:%S"
 ROW_COUNT = 100
@@ -30,19 +30,22 @@ TABLE_HEAD = [
 ]
 
 
-async def spreadsheets_create(wrapper_services: Aiogoogle, template=None) -> str:
+async def spreadsheets_create(
+        wrapper_services: Aiogoogle,
+        template=None) -> tuple[str, str]:
     if template is None:
         template = SPREADSHEET_TEMPLATE
-    now_date_time = datetime.now().strftime(FORMAT)
     service = await wrapper_services.discover('sheets', 'v4')
     spreadsheet_body = deepcopy(template)
-    spreadsheet_body['properties']['title'] = f'Отчет от {now_date_time}'
+    spreadsheet_body['properties']['title'] = (
+        f'Отчет от {datetime.now().strftime(FORMAT)}')
 
     response = await wrapper_services.as_service_account(
         service.spreadsheets.create(json=spreadsheet_body)
     )
-    spreadsheet_id = response['spreadsheetId']
-    return spreadsheet_id
+    spreadsheet_id = response.get('spreadsheetId')
+    url = response.get('spreadsheetUrl')
+    return spreadsheet_id, url
 
 
 async def set_user_permissions(
@@ -69,19 +72,32 @@ async def spreadsheets_update_value(
         projects: list,
         wrapper_services: Aiogoogle
 ) -> None:
-    now_date_time = datetime.now().strftime(FORMAT)
+    formatted_projects = [
+        {
+            "name": project.name,
+            "duration": str(project.close_date - project.create_date),
+            "description": project.description
+        }
+        for project in sorted(
+            projects,
+            key=lambda project: project.close_date - project.create_date
+        )
+    ]
+
     service = await wrapper_services.discover('sheets', 'v4')
     head = deepcopy(TABLE_HEAD)
-    head[0][1] = now_date_time
+    head[0][1] = datetime.now().strftime(FORMAT)
     table_values = [
         *head,
-        *[list(map(str, project.values())) for project in projects]
+        *[list(map(str, project.values())) for project in formatted_projects]
     ]
     num_rows = len(table_values)
     num_columns = max(map(len, table_values))
 
     if num_rows > ROW_COUNT or num_columns > COLUMN_COUNT:
-        raise ValueError
+        raise SpreadsheetSizeExceededError(
+            f"Rows: {num_rows}/{ROW_COUNT},"
+            f" Cols: {num_columns}/{COLUMN_COUNT}")
 
     update_body = {
         'majorDimension': 'ROWS',

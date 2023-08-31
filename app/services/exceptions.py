@@ -1,0 +1,2 @@
+class SpreadsheetSizeExceededError(Exception):
+    pass
