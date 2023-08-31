@@ -1,5 +1,5 @@
 from aiogoogle import Aiogoogle
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_async_session
@@ -28,6 +28,12 @@ async def get_report(
 
     spreadsheet_id = await spreadsheets_create(wrapper_services)
     await set_user_permissions(spreadsheet_id, wrapper_services)
-    await spreadsheets_update_value(spreadsheet_id, formatted_projects, wrapper_services)
+    try:
+        await spreadsheets_update_value(
+            spreadsheet_id, formatted_projects, wrapper_services)
+    except ValueError:
+        raise HTTPException(status_code=400, detail='Слишком много данных')
+    except Exception:
+        raise HTTPException(status_code=500, detail='Unexpected error.')
 
     return f'https://docs.google.com/spreadsheets/d/{spreadsheet_id}'
