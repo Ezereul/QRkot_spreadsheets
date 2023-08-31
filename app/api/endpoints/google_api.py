@@ -1,5 +1,3 @@
-from typing import Any
-
 from aiogoogle import Aiogoogle
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,33 +9,25 @@ from app.crud.charityproject import charityproject_crud
 from app.services.google_api import (
     spreadsheets_create, set_user_permissions, spreadsheets_update_value
 )
+from app.services.project_sorting import get_projects_by_completion_rate
 
 router = APIRouter()
 
 
 @router.post(
     '/',
-    response_model=list[dict[str, Any]],
     dependencies=[Depends(current_superuser)]
 )
 async def get_report(
         session: AsyncSession = Depends(get_async_session),
         wrapper_services: Aiogoogle = Depends(get_service)
-):
+) -> str:
     """Только для суперюзеров."""
-    projects = await charityproject_crud.get_projects_by_completion_rate(
-        session
-    )
-    formatted_projects = [
-        {
-            "name": project.name,
-            "duration": str(project.close_date - project.create_date),
-            "description": project.description
-        }
-        for project in projects
-    ]
+    projects = await charityproject_crud.get_closed(session)
+    formatted_projects = await get_projects_by_completion_rate(projects)
 
     spreadsheet_id = await spreadsheets_create(wrapper_services)
     await set_user_permissions(spreadsheet_id, wrapper_services)
-    await spreadsheets_update_value(spreadsheet_id, projects, wrapper_services)
-    return formatted_projects
+    await spreadsheets_update_value(spreadsheet_id, formatted_projects, wrapper_services)
+
+    return f'https://docs.google.com/spreadsheets/d/{spreadsheet_id}'

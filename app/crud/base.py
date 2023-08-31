@@ -86,3 +86,12 @@ class CRUDBase:
             select(self.model).where(self.model.fully_invested == False) # noqa
         )
         return open_projects.all()
+
+    async def get_closed(
+        self,
+        session: AsyncSession
+    ):
+        closed_projects = await session.scalars(
+            select(self.model).where(self.model.fully_invested == True) # noqa
+        )
+        return closed_projects.all()
