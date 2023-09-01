@@ -43,9 +43,8 @@ async def spreadsheets_create(
     response = await wrapper_services.as_service_account(
         service.spreadsheets.create(json=spreadsheet_body)
     )
-    spreadsheet_id = response.get('spreadsheetId')
-    url = response.get('spreadsheetUrl')
-    return spreadsheet_id, url
+
+    return response.get('spreadsheetId'), response.get('spreadsheetUrl')
 
 
 async def set_user_permissions(
@@ -89,15 +88,18 @@ async def spreadsheets_update_value(
     head[0][1] = datetime.now().strftime(FORMAT)
     table_values = [
         *head,
-        *[list(map(str, project.values())) for project in formatted_projects]
+        *[list(project.values()) for project in formatted_projects]
     ]
     num_rows = len(table_values)
     num_columns = max(map(len, table_values))
 
     if num_rows > ROW_COUNT or num_columns > COLUMN_COUNT:
         raise SpreadsheetSizeExceededError(
-            f"Rows: {num_rows}/{ROW_COUNT},"
-            f" Cols: {num_columns}/{COLUMN_COUNT}")
+            f"Превышено допустимое количество строк и/или столбцов в таблице. "
+            f"Текущее количество строк: {num_rows}, "
+            f"максимально допустимое: {ROW_COUNT}. "
+            f"Текущее количество столбцов: {num_columns}, "
+            f"максимально допустимое: {COLUMN_COUNT}.")
 
     update_body = {
         'majorDimension': 'ROWS',
